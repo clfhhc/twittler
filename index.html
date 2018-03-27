@@ -3,23 +3,149 @@
   <head>
     <script src="jquery.js"></script>
     <script src="data_generator.js"></script>
+    <script src="moment.js"></script>
+    <style>
+      .user {
+        color:blue;
+      }
+      .time {
+        color:grey;
+      }
+      #visitor {
+        margin-right:12px;
+      }
+      .show {
+        border:0;
+      }
+    </style>
   </head>
   <body>
-    <script>
+    <h1>Twittler</h1>
+    <div>
+      <form>
+        <fieldset class="write">
+          <label>Visitor:</label>
+          <input type="text" name="visitor" id="visitor" size="12" value="visitor">
+          <label>message:</label>
+          <input type="text" name="message" id="message-write" size="48" value="Hello">
+          <button type='button'>new tweets</button>
+        </fieldset>
+        <fieldset class="show">
+          <label>Show tweets by</label>
+          <select name="user-show" id="user-show">
+            <option value="All" selected="selected">All</option>
+          </select>
+        </fieldset>
+      </form>
+    </div>
+    <section class="tweets">
 
+    </section>
+    <script>
+      
       $(document).ready(function(){
         var $body = $('body');
-        $body.html('');
+        $body.css({'color':'black'});
+        var $tweets = $('section.tweets');
+        var $users = $('#user-show');
+        var userSet = Object.keys(streams.users);
+        
+        /*
+        function getCreatedTime(dateTime) {
+          return `${dateTime.getMonth()}/${dateTime.getDate()}/${dateTime.getFullYear()} ${dateTime.getHours()}:${dateTime.getMinutes()}:${dateTime.getSeconds()}`;
+        }
+        */
 
-        var index = streams.home.length - 1;
-        while(index >= 0){
-          var tweet = streams.home[index];
-          var $tweet = $('<div></div>');
-          $tweet.text('@' + tweet.user + ': ' + tweet.message);
-          $tweet.appendTo($body);
-          index -= 1;
+        function getFriendlyTime(dateTime) {
+          return moment(dateTime).startOf('minute').fromNow();
         }
 
+        function showOneTweet(index) {
+          var tweet = streams.home[index];
+          var $tweet = $('<div></div>');
+          var createdTime=tweet.created_at;
+          var $time = $('<span></span>');
+          $tweet.text(tweet.message + ' ');
+          $tweet.prepend('@<span class="user">' + tweet.user + '</span>: ');
+          $time.text(getFriendlyTime(createdTime));
+          $time.addClass('time');
+          $time.appendTo($tweet);
+          $tweet.prependTo($tweets);
+        }
+
+        function refreshTweets() {
+          var shownTweetCount=$tweets.find('div').length;
+          for (let index = 0;index<streams.home.length;index++){
+            if (index<shownTweetCount) {
+              $tweets.each(function (index) {
+                var tweet = streams.home[index];
+                var createdTime=tweet.created_at;
+                $(this).find('.time').text(getFriendlyTime(createdTime));
+              })
+            } else {
+              showOneTweet(index);
+            }
+          }
+          filterUserTweets();
+        }
+        
+        function filterUserTweets() {
+          if ($('#user-show').val()==="All") {
+            $tweets.find('div').show();
+          } else {
+            $tweets.find('div').hide(); // hide all the selected elements
+            $('.user:contains("'+$('#user-show').val()+'")').closest('div').show();
+          }
+        }
+
+        var frequentlyRefreshTweets = function(){
+          refreshTweets();
+          //filterUserTweets();
+          setTimeout(frequentlyRefreshTweets, 5000);
+        };
+
+        function showOneUser(index) {
+          var user = userSet[index];
+          var $user = $('<option></option>');
+          $user.text(user);
+          $user.val(user);
+          $user.appendTo($users);
+        }
+
+        function refreshUsers() {
+          var shownUserCount = $users.find('option').length-1;
+          if (userSet.length > shownUserCount) {
+            var index = shownUserCount;
+            while (index <= userSet.length - 1) {
+              showOneUser(index);
+              index++;
+            }
+          }
+        }
+        
+        function addOneUser(user) {
+          if (!userSet.includes(user)) {
+            userSet.push(user);
+          }
+        }
+
+        frequentlyRefreshTweets();
+        refreshUsers();
+        
+        $('button').on('click',function(){
+          var visitor = $('#visitor').val();
+          var message = $('#message-write').val();
+          writeTweet(visitor,message);
+          addOneUser(visitor);
+          refreshTweets();
+          refreshUsers();
+        });
+
+        $('#user-show').change(function (){
+          refreshTweets();
+        });
+
+        
       });
 
     </script>
